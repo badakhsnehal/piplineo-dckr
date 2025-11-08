@@ -1,0 +1,20 @@
+needed
+Docker Pipeline
+Pipeline
+Credentials Binding Plugin
+
+go to Manage Jenkins → Credentials → System → Global Credentials
+Click Add Credentials
+Kind: Username with password
+Username: <your Docker Hub username>
+Password: <your Docker Hub password or token>
+ID: docker-hub-credentials
+Description: Docker Hub credentials
+Click OK.
+
+scroll to Pipeline section
+
+Definition: Pipeline script OR
+You can also choose Pipeline script from SCM if storing
+
+Save And build add credis if needed
