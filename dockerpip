@@ -3,8 +3,8 @@ pipeline {
 
     environment {
         // Docker image name
-        IMAGE_NAME = 'your-dockerhub-username/spnodeserver'
-        // Docker Hub credentials ID
+        IMAGE_NAME = 'snehal2004'
+        // Docker Hub credentials ID give here that you give or cridentioal
         DOCKER_CREDENTIALS = 'docker-hub-credentials'
     }
 
