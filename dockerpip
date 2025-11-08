@@ -1,12 +1,13 @@
 pipeline {
-    agent any  // Runs on any available Jenkins node
+    agent { label 'builtinubuntu' }
 
     environment {
-        IMAGE_NAME = 'snehal2004'
-        DOCKER_CREDENTIALS = 'docker-hub-credentials'
+        DOCKER_CREDENTIALS = 'docker-hub-credentials' // Jenkins credentials ID
+        IMAGE_NAME = 'snehal2004/someapp'             // Docker Hub repo
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/ajay-raut/spnodeserver.git'
@@ -16,49 +17,47 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS,
+                    withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS}",
                                                      usernameVariable: 'DOCKER_USER',
                                                      passwordVariable: 'DOCKER_PASS')]) {
-                        sh """
-                        docker build -t ${IMAGE_NAME}:latest .
-                        docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:${BUILD_NUMBER}
-                        """
+                        // Login to Docker Hub
+                        sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+
+                        // Build Docker image
+                        sh "docker build -t $IMAGE_NAME:latest ."
+
+                        // Tag with Jenkins build number
+                        sh "docker tag $IMAGE_NAME:latest $IMAGE_NAME:${BUILD_NUMBER}"
+
+                        // Push both tags to Docker Hub
+                        sh "docker push $IMAGE_NAME:latest"
+                        sh "docker push $IMAGE_NAME:${BUILD_NUMBER}"
                     }
                 }
             }
         }
 
-        stage('Push to Docker Hub') {
+        stage('Cleanup') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS,
-                                                     usernameVariable: 'DOCKER_USER',
-                                                     passwordVariable: 'DOCKER_PASS')]) {
-                        sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                        sh """
-                        docker push ${IMAGE_NAME}:latest
-                        docker push ${IMAGE_NAME}:${BUILD_NUMBER}
-                        """
-                    }
+                    // Remove local images to save space
+                    sh "docker rmi $IMAGE_NAME:latest || true"
+                    sh "docker rmi $IMAGE_NAME:${BUILD_NUMBER} || true"
                 }
             }
         }
+
     }
 
     post {
         always {
-            sh """
-            docker rmi ${IMAGE_NAME}:latest || true
-            docker rmi ${IMAGE_NAME}:${BUILD_NUMBER} || true
-            """
+            echo 'Pipeline finished.'
         }
-
         success {
-            echo "Docker image pushed successfully!"
+            echo 'Docker image built and pushed successfully!'
         }
-
         failure {
-            echo "Pipeline failed."
+            echo 'Pipeline failed!'
         }
     }
 }
