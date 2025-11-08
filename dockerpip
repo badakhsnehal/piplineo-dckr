@@ -1,9 +1,9 @@
 pipeline {
-    agent { label 'builtinubuntu' }
+    agent any  // Runs on any available Jenkins node
 
     environment {
         DOCKER_CREDENTIALS = 'docker-hub-credentials' // Jenkins credentials ID
-        IMAGE_NAME = 'snehal2004/someapp'             // Docker Hub repo
+        IMAGE_NAME = 'snehal2004/someapp'             // Docker Hub repository
     }
 
     stages {
@@ -40,7 +40,7 @@ pipeline {
         stage('Cleanup') {
             steps {
                 script {
-                    // Remove local images to save space
+                    // Remove local Docker images to save space
                     sh "docker rmi $IMAGE_NAME:latest || true"
                     sh "docker rmi $IMAGE_NAME:${BUILD_NUMBER} || true"
                 }
