@@ -2,7 +2,7 @@ pipeline {
     agent any  // Runs on any available Jenkins node
 
     environment {
-        IMAGE_NAME = 'your-dockerhub-username/spnodeserver'
+        IMAGE_NAME = 'snehal2004'
         DOCKER_CREDENTIALS = 'docker-hub-credentials'
     }
 
