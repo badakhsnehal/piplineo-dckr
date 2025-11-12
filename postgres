@@ -1,0 +1,37 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Run PostgreSQL Container') {
+            steps {
+                script {
+                    withCredentials([string(credentialsId: 'postress', variable: 'POSTGRES_PASS')]) {  /// usee CID is same
+                        sh '''
+                            echo "🐘 Starting PostgreSQL container securely..."
+                            
+                            # Remove old container if exists
+                            docker rm -f some-postgres || true
+                            
+                            # Run PostgreSQL container securely
+                            docker run -d \
+                                --name some-postgres \
+                                -e POSTGRES_PASSWORD=$POSTGRES_PASS \
+                                postgres
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo " PostgreSQL container started successfully!"
+            sh 'docker ps | grep some-postgres || echo "Container not running"'
+        }
+        failure {
+            echo "Pipeline failed. Check your logs!"
+            sh 'echo " Cleaning up old PostgreSQL container (if exists)..." && docker rm -f some-postgres || true'
+        }
+    }
+}
