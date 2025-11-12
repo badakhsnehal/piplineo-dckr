@@ -1,0 +1,54 @@
+🧩 Step-by-Step to Test POST Request in Postman
+
+Open Postman
+If you don’t have it yet, download from https://www.postman.com/downloads/
+.
+
+Create a new request
+
+Click “+ New Tab” or “New Request”.
+
+Set method and URL
+
+Change method to POST (left dropdown).
+
+Enter your Go API URL in the address bar:
+
+http://<your-worker-publicIP>:30008/posts
+
+
+Example:
+
+http://65.1.121.86:30008/posts
+
+
+Go to “Body” tab
+
+Select raw.
+
+From the dropdown (on the right of "Text"), select JSON.
+
+Paste this JSON
+
+{
+    "Title": "My first blog",
+    "Body": "Hello Kubernetes!",
+    "Author": "Snehal"
+}
+
+
+Click Send
+
+If everything’s working, you’ll get a response like:
+
+{
+    "id": 1,
+    "Title": "My first blog",
+    "Body": "Hello Kubernetes!",
+    "Author": "Snehal"
+}
+
+
+
+Delete
+kubectl delete pvc postgres-pvc -n database-stack
