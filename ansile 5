@@ -1,0 +1,371 @@
+Step 2: Install SSH on Managed Nodes
+
+On VM2 & VM3:
+
+sudo apt update
+sudo apt install openssh-server -y
+sudo systemctl enable ssh
+sudo systemctl start ssh
+
+Step 3: Install Ansible on Control Node
+
+On VM1:
+
+sudo apt update
+sudo apt install ansible -y
+ansible --version
+
+Step 4: Create Project Folder & Inventory
+mkdir -p ~/ansible_lab/SetA
+cd ~/ansible_lab/SetA
+
+ansible.cfg
+[defaults]
+inventory = inventory
+remote_user = your_user
+host_key_checking = False
+
+inventory
+[managed_nodes]
+node1 ansible_host=192.168.56.102
+node2 ansible_host=192.168.56.103
+
+
+
+Test connection:
+
+
+ansible all -m ping
+
+
+Step 5: Create User Playbook
+create_user.yml
+- hosts: managed_nodes
+  become: yes
+  vars:
+    username: "john"
+    comment: "John Doe - Student"
+  tasks:
+    - name: Create user
+      user:
+        name: "{{ username }}"
+        comment: "{{ comment }}"
+        state: present
+
+    - name: Display user info
+      debug:
+        msg: "Created user {{ username }} with comment '{{ comment }}'"
+
+
+
+Run playbook:
+
+
+ansible-playbook create_user.yml
+
+
+Step 6: Use host_vars
+mkdir host_vars
+nano host_vars/node1.yml
+
+Content:
+username: alice
+comment: "Alice - Node 1 user"
+
+
+
+Ansible automatically uses these variables for the specific host.
+
+
+
+Step 7: Use group_vars
+mkdir group_vars
+nano group_vars/all.yml
+
+username: defaultuser
+comment: "Default comment for all nodes"
+
+
+
+For managed nodes specifically: group_vars/managed_nodes.yml
+
+
+username: manageduser
+comment: "Managed nodes user"
+
+
+SET B – Nginx Deployment Using Templates
+Step 1: Launch Virtual Machines
+
+
+Launch 2 Debian/Ubuntu VMs:
+
+
+VM1 → Control Node
+
+
+VM2 → Managed Node1
+
+
+VM3 → Managed Node2
+
+
+
+
+Assign IPs:
+
+
+Control → 192.168.56.101
+
+
+Web1 → 192.168.56.201
+
+
+Web2 → 192.168.56.202
+
+
+
+
+
+Step 2: Install SSH & Ansible
+
+
+Same as Set A.
+
+
+Make sure control node can SSH into web nodes.
+
+
+
+Step 3: Create Project Folder
+mkdir -p ~/ansible_lab/SetB/templates
+cd ~/ansible_lab/SetB
+
+
+
+Inventory example:
+
+
+[webservers]
+web1 ansible_host=192.168.56.201
+web2 ansible_host=192.168.56.202
+
+
+Step 4: Create Templates
+index.html.j2
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Welcome</title>
+</head>
+<body>
+    <h1>Hostname: {{ ansible_hostname }}</h1>
+    <h2>IP Address: {{ ansible_default_ipv4.address }}</h2>
+</body>
+</html>
+
+nginx.conf.j2
+server {
+    listen 80;
+    server_name example.com;
+
+    root /var/www/html;
+    index index.nginx-debian.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+
+
+Step 5: Playbook to Install Nginx
+install_nginx.yml
+- hosts: webservers
+  become: yes
+  tasks:
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Ensure Nginx is running
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+Run:
+ansible-playbook install_nginx.yml
+
+
+Step 6: Playbook to Copy Nginx Config
+copy_nginx_conf.yml
+- hosts: webservers
+  become: yes
+  tasks:
+    - name: Copy nginx config
+      template:
+        src: templates/nginx.conf.j2
+        dest: /etc/nginx/sites-available/example.com.conf
+
+    - name: Enable site
+      command: ln -sf /etc/nginx/sites-available/example.com.conf /etc/nginx/sites-enabled/example.com.conf
+      args:
+        removes: /etc/nginx/sites-enabled/example.com.conf
+
+    - name: Reload Nginx
+      service:
+        name: nginx
+        state: reloaded
+
+Run:
+ansible-playbook copy_nginx_conf.yml
+
+
+Step 7: Playbook to Deploy HTML
+deploy_index.yml
+- hosts: webservers
+  become: yes
+  tasks:
+    - name: Deploy index page
+      template:
+        src: templates/index.html.j2
+        dest: /var/www/html/index.nginx-debian.html
+
+Run:
+ansible-playbook deploy_index.yml
+
+
+
+Check in browser: http://<web-server-ip> → hostname & IP displayed
+
+
+Step 1: Create the Project Folder
+mkdir -p ~/ansible_roles
+cd ~/ansible_roles
+
+
+
+We'll have two roles: apache (Debian) and httpd (RedHat).
+
+
+
+Step 2: Create the apache Role (Debian/Ubuntu)
+ansible-galaxy init apache
+
+This creates a folder structure:
+apache/
+
+
+
+Step 2a: Configure the Template
+Create templates/index.html.j2:
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Apache Server</title>
+</head>
+<body>
+    <h1>Hostname: {{ ansible_hostname }}</h1>
+    <h2>IPv4 Address: {{ ansible_default_ipv4.address }}</h2>
+</body>
+</html>
+
+
+Step 2b: Write Tasks
+Edit tasks/main.yml:
+- name: Install Apache
+  apt:
+    name: apache2
+    state: present
+    update_cache: yes
+
+- name: Ensure Apache is running
+  service:
+    name: apache2
+    state: started
+    enabled: yes
+
+- name: Deploy HTML page
+  template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+
+
+Step 3: Create the httpd Role (RedHat/CentOS)
+ansible-galaxy init httpd
+
+Folder structure is the same.
+
+Step 3a: Configure Template
+Create templates/index.html.j2:
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HTTPD Server</title>
+</head>
+<body>
+    <h1>Hostname: {{ ansible_hostname }}</h1>
+    <h2>IPv4 Address: {{ ansible_default_ipv4.address }}</h2>
+</body>
+</html>
+
+
+Step 3b: Write Tasks
+Edit tasks/main.yml:
+- name: Install httpd
+  yum:
+    name: httpd
+    state: present
+
+- name: Ensure httpd is running
+  service:
+    name: httpd
+    state: started
+    enabled: yes
+
+- name: Deploy HTML page
+  template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+
+
+Step 4: Create Playbooks to Use Roles
+4a: For Debian servers (Apache)
+apache_playbook.yml:
+- hosts: debian_servers
+  become: yes
+  roles:
+    - apache
+
+4b: For RedHat servers (httpd)
+httpd_playbook.yml:
+- hosts: redhat_servers
+  become: yes
+  roles:
+    - httpd
+
+
+Step 5: Inventory Example
+[debian_servers]
+deb1 ansible_host=192.168.56.102 ansible_user=your_user
+deb2 ansible_host=192.168.56.103 ansible_user=your_user
+
+[redhat_servers]
+rhel1 ansible_host=192.168.56.201 ansible_user=your_user
+rhel2 ansible_host=192.168.56.202 ansible_user=your_user
+
+
+Step 6: Run Playbooks
+ansible-playbook -i inventory apache_playbook.yml
+ansible-playbook -i inventory httpd_playbook.yml
+
+
+
+On Debian: Visit http://<debian-server-ip> → Apache page with hostname & IP
+
+
+On RedHat: Visit http://<redhat-server-ip> → httpd page with hostname & IP
+
+
