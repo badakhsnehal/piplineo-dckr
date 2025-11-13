@@ -1,0 +1,292 @@
+1 ssh -i ~/ass.pem ubuntu@52.66.240.72
+ 2
+sudo apt update
+sudo apt install -y ansible
+ansible --version
+3
+cd ~
+mkdir -p ~/ansible-project
+cd ~/ansible-project
+
+
+
+  5 # Check Python on Debian node (this is control itself)
+ssh -i ~/ass.pem ubuntu@52.66.240.72 'python3 --version || echo "python3 missing"'
+
+# Check Python on redhat node
+ssh -i ~/ass.pem ec2-user@65.0.183.233 'python3 --version || sudo dnf install -y python3'
+
+4 nano ansible.cfg
+[defaults]
+inventory = ./inventory
+host_key_checking = False
+private_key_file = ~/ass.pem
+retry_files_enabled = False
+
+
+nano inventory
+[debian]
+debian-node ansible_host=52.66.240.72 ansible_user=ubuntu
+
+[redhat]
+redhat-node ansible_host=65.0.183.233 ansible_user=ec2-user
+
+[all:vars]
+ansible_ssh_private_key_file=~/ass.pem
+
+
+6
+1 ansible all -m ping
+2 Copy
+ansible redhat -m ansible.builtin.copy -a "dest=/tmp/welcome.txt content='Welcome to RedHat managed by Ansible' mode=0644"
+3 ansible all -m ansible.builtin.file -a "path=/tmp/ansible_demo state=directory mode=0755 owner=root group=root" --become
+4 ansible debian -m ansible.builtin.apt -a "name=apache2 state=present update_cache=yes" --become
+5ansible redhat -m ansible.builtin.yum -a "name=httpd state=present" --become
+6ansible redhat -m ansible.builtin.service -a "name=httpd state=started enabled=yes" --become
+
+8ansible all -m ansible.builtin.setup
+7ansible all -m ansible.builtin.user -a "name=ansibleuser state=present create_home=yes" --become
+
+
+for reacnetion
+ssh -i "ass.pem" ec2-user@ec2-65-0-183-233.ap-south-1.compute.amazonaws.com
+------------------------------------------------------------------------------------------------------------
+
+Q2 you need to create 3 instanc 2ubuntu  one amzo
+
+to connect
+
+chmod 400 ~/ass.pem
+ssh -i ~/ass.pem ec2-user@ec2-65-0-183-233.ap-south-1.compute.amazonaws.com
+
+ansibal instal
+sudo apt update
+sudo apt install -y ansible
+ansible --version
+
+mkdir ~/ansible-project
+cd ~/ansible-project
+mkdir playbooks
+
+nano ansible.cfg
+
+[defaults]
+inventory = inventory
+remote_user = ec2-user
+private_key_file = /home/ec2-user/ass.pem
+host_key_checking = False
+
+nano inventory
+
+[defaults]
+
+[debian]
+debian-node ansible_host=52.66.240.72 ansible_user=ubuntu
+
+[debian2]
+debian-node2 ansible_host=3.111.36.136 ansible_user=ubuntu
+
+[redhat]
+redhat-node ansible_host=65.0.183.233 ansible_user=ec2-user
+
+
+
+ansible all -m ping
+
+2
+
+cd ~/ansible-project/playbooks
+nano install_java.yml
+
+
+---
+- name: Install Java on Debian and Amazon Linux 2023
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update apt cache (Debian family)
+      apt:
+        update_cache: yes
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Install Java 11 on Debian
+      apt:
+        name: openjdk-11-jdk
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Install Java 17 on Amazon Linux 2023
+      dnf:
+        name: java-17-amazon-corretto
+        state: present
+      when: ansible_facts['distribution'] == "Amazon"
+
+    - name: Display Java version
+      command: java -version
+      register: java_version
+      ignore_errors: yes
+
+    - debug:
+        var: java_version.stderr_lines
+
+CMD
+ansible-playbook install_java.yml
+
+=========================================
+
+nano install_nginx.yml
+
+
+---
+- name: Install and start Nginx on all managed nodes
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install Nginx on Debian
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Install Nginx on Amazon Linux
+      dnf:
+        name: nginx
+        state: present
+      when: ansible_facts['distribution'] == "Amazon"
+
+    - name: Start and enable Nginx service
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+
+CMD
+ansible-playbook install_nginx.yml
+
+---
+- name: Add multiple users on all managed nodes
+  hosts: all
+  become: yes
+  vars:
+    users:
+      - snehal
+      - ranvver
+      - adminuser
+  tasks:
+    - name: Create users with home directories
+      user:
+        name: "{{ item }}"
+        state: present
+        create_home: yes
+      loop: "{{ users }}"
+
+
+CMD
+ansible-playbook add_users.yml
+
+
+=======================================
+
+
+
+nano add_users.yml
+
+=============================================================
+if port in use 
+
+ansible redhat-node,debian-node -a "sudo systemctl status nginx" -b
+ansible redhat-node,debian-node -a "sudo lsof -i :80" -b
+ansible redhat-node,debian-node -a "sudo systemctl stop apache2 httpd" -b
+ansible redhat-node,debian-node -a "sudo systemctl restart nginx" -b
+==============================
+
+set c
+
+ansible-project/
+ ├── inventory.ini
+ └── playbooks/
+     └── setC_webdeploy.yml
+
+------------------------------------------------
+---
+- name: Deploy Tooplate sample website using Ansible
+  hosts: all
+  become: yes
+  vars:
+    web_root: /var/www/html
+    template_url: "https://www.tooplate.com/zip-templates/2137_barista_cafe.zip"
+    zip_name: "tooplate-template.zip"
+
+  tasks:
+    # 1️⃣ Install Nginx
+    - name: Install Nginx on Debian/Ubuntu
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install Nginx on Amazon Linux/RedHat
+      ansible.builtin.dnf:
+        name: nginx
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    # 2️⃣ Start and enable Nginx
+    - name: Start and enable Nginx service
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    # 3️⃣ Install unzip utility
+    - name: Install unzip utility
+      package:
+        name: unzip
+        state: present
+
+    # 4️⃣ Download sample project from Tooplate
+    - name: Download website template
+      ansible.builtin.get_url:
+        url: "{{ template_url }}"
+        dest: "/tmp/{{ zip_name }}"
+
+    # 5️⃣ Unzip the project files
+    - name: Extract the downloaded template
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ zip_name }}"
+        dest: "/tmp/"
+        remote_src: yes
+
+    # 6️⃣ Copy files to Nginx web root
+    - name: Copy extracted files to web root
+      ansible.builtin.copy:
+        src: "/tmp/"
+        dest: "{{ web_root }}/"
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      ignore_errors: yes
+
+    # 7️⃣ Restart Nginx
+    - name: Restart Nginx service
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+    # 8️⃣ Display access info
+    - name: Display access URL
+      ansible.builtin.debug:
+        msg: "Website deployed! Access it via: http://{{ ansible_host }}/"
+
+
+CMD 
+ansible-playbook -i inventory playbooks/setC_webdeploy.yml
+
+ansible-playbook playbooks/setC_webdeploy.yml
+
+
+
+
