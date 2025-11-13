@@ -1,0 +1,5 @@
+ mkdir mlpra
+ cd mlpra
+ python3 -m venv myenv
+
+ source myenv/bin/activate
